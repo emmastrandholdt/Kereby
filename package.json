@@ -1,0 +1,15 @@
+{
+  "name": "kereby-lejlighed-monitor",
+  "version": "1.0.0",
+  "description": "Overvåger kerebyudlejning.dk og sender mail ved nye lejligheder.",
+  "type": "module",
+  "scripts": {
+    "monitor": "node scripts/monitor.mjs",
+    "oauth:refresh": "node scripts/oauth-refresh-token.mjs"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "dotenv": "^16.6.1",
+    "nodemailer": "^7.0.5"
+  }
+}

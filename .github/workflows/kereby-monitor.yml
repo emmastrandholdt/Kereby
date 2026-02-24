@@ -1,0 +1,57 @@
+name: Kereby Monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Check website and send mail if needed
+        run: npm run monitor
+        env:
+          BASE_URL: https://kerebyudlejning.dk
+          RENTALS_API_BASE_URL: https://api.jorato.com
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          SMTP_HOST: smtp-relay.brevo.com
+          SMTP_PORT: "587"
+          SMTP_AUTH_METHOD: password
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          MAX_RENT: "16000"
+          MIN_ROOMS: "3"
+          CHECK_PATHS: /,/ledige-lejemaal,/udlejning,/lejligheder,/boliger
+
+      - name: Commit updated state
+        run: |
+          if [[ -n "$(git status --porcelain state/seen.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state/seen.json
+            git commit -m "chore: update monitor state [skip ci]"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          else
+            echo "No state update to commit."
+          fi
