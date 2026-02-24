@@ -1,6 +1,6 @@
 {
   "name": "kereby-lejlighed-monitor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Overvåger kerebyudlejning.dk og sender mail ved nye lejligheder.",
   "type": "module",
   "scripts": {
