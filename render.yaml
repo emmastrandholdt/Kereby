@@ -2,7 +2,7 @@ services:
   - type: cron
     name: kereby
     env: node
-    schedule: "*/5 * * * *"
+    schedule: "*/1 * * * *"
     plan: starter
     buildCommand: "npm install"
     startCommand: "node scripts/monitor.mjs"
