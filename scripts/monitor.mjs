@@ -20,6 +20,9 @@ const CHECK_PATHS = (process.env.CHECK_PATHS ||
 const RENTALS_API_BASE_URL = process.env.RENTALS_API_BASE_URL || "https://api.jorato.com";
 const RENTALS_API_KEY = process.env.RENTALS_API_KEY || "2gXoBtKvFMMgKJ1VBJ5G5pNr2GD";
 const SOURCE_VERSION = 2;
+const MONITOR_TIMEZONE = process.env.MONITOR_TIMEZONE || "Europe/Copenhagen";
+const MONITOR_START_HOUR = Number(process.env.MONITOR_START_HOUR || 8);
+const MONITOR_END_HOUR = Number(process.env.MONITOR_END_HOUR || 16);
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
@@ -106,6 +109,17 @@ function validateConfig() {
   }
   if (!Number.isFinite(MIN_ROOMS) || MIN_ROOMS <= 0) {
     throw new Error(`Ugyldig MIN_ROOMS: ${process.env.MIN_ROOMS}`);
+  }
+  if (!Number.isInteger(MONITOR_START_HOUR) || MONITOR_START_HOUR < 0 || MONITOR_START_HOUR > 23) {
+    throw new Error(`Ugyldig MONITOR_START_HOUR: ${process.env.MONITOR_START_HOUR}`);
+  }
+  if (!Number.isInteger(MONITOR_END_HOUR) || MONITOR_END_HOUR < 0 || MONITOR_END_HOUR > 23) {
+    throw new Error(`Ugyldig MONITOR_END_HOUR: ${process.env.MONITOR_END_HOUR}`);
+  }
+  if (MONITOR_START_HOUR > MONITOR_END_HOUR) {
+    throw new Error(
+      `MONITOR_START_HOUR (${MONITOR_START_HOUR}) må ikke være større end MONITOR_END_HOUR (${MONITOR_END_HOUR})`
+    );
   }
 }
 
@@ -245,6 +259,39 @@ function buildRentalSlug(address = {}) {
   if (slug.length > 45) slug = slug.slice(0, 45).trim();
 
   return slug.replace(/\s/g, "-");
+}
+
+function getLocalTimeParts(timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const hour = Number(parts.find((part) => part.type === "hour")?.value);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value);
+
+  return { hour, minute };
+}
+
+function isWithinMonitorWindow() {
+  const { hour, minute } = getLocalTimeParts(MONITOR_TIMEZONE);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    throw new Error(`Kunne ikke læse lokal tid for timezone ${MONITOR_TIMEZONE}`);
+  }
+
+  if (hour < MONITOR_START_HOUR || hour > MONITOR_END_HOUR) {
+    return false;
+  }
+
+  if (hour === MONITOR_END_HOUR && minute > 0) {
+    return false;
+  }
+
+  return true;
 }
 
 function escapeHtml(value) {
@@ -524,6 +571,13 @@ async function collectListings() {
 
 async function main() {
   validateConfig();
+
+  if (!isWithinMonitorWindow()) {
+    console.log(
+      `Uden for overvågningsvindue (${MONITOR_START_HOUR}:00-${MONITOR_END_HOUR}:00 ${MONITOR_TIMEZONE}). Springer over.`
+    );
+    return;
+  }
 
   const [state, currentListings] = await Promise.all([loadState(), collectListings()]);
 

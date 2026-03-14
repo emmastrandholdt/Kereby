@@ -7,7 +7,7 @@ Notifikation sendes kun, når annoncer matcher dine kriterier (maks husleje og m
 
 Løsningen bruger **GitHub Actions** som gratis server:
 
-- Kører hvert 5. minut (`cron`).
+- Kører hvert 5. minut mellem `08:00` og `16:00` dansk tid.
 - Gemmer kendte links i `state/seen.json`.
 - Sender kun mail ved nye links, som matcher kriterierne.
 - Henter data direkte fra Kerebys tenancies-API (ikke kun HTML-links), så den finder faktiske lejligheder.
@@ -22,7 +22,7 @@ Løsningen bruger **GitHub Actions** som gratis server:
    - `EMAIL_FROM`
 3. Aktivér Actions i repoet.
 4. Kør workflowet én gang manuelt (`Actions -> Kereby Monitor -> Run workflow`) for baseline.
-5. Derefter kører det automatisk hvert 5. minut.
+5. Derefter kører det automatisk hvert 5. minut mellem `08:00` og `16:00` dansk tid.
 
 Bemærk: GitHub Actions schedule er ikke real-time, så der kan være små forsinkelser.
 
@@ -73,6 +73,16 @@ Følgende env vars styrer filtrering:
 - `MIN_ROOMS` (default `3`)
 
 Hvis en ny annonce ikke kan parses til både husleje og værelser, sendes der ingen notifikation for den.
+
+## Tidsvindue
+
+Følgende env vars styrer hvornår monitoren må køre:
+
+- `MONITOR_TIMEZONE` (default `Europe/Copenhagen`)
+- `MONITOR_START_HOUR` (default `8`)
+- `MONITOR_END_HOUR` (default `16`)
+
+Monitoren kører kun i dette vindue. Udenfor vinduet stopper scriptet uden at scanne siden.
 
 ## Lokalt test (valgfrit)
 
