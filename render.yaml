@@ -1,8 +1,44 @@
 services:
-  - type: cron
-    name: kereby
-    env: node
-    schedule: "*/1 * * * *"
+  - type: worker
+    name: kereby-monitor
+    runtime: node
     plan: starter
-    buildCommand: "npm install"
-    startCommand: "node scripts/monitor.mjs"
+    buildCommand: npm install
+    startCommand: npm run monitor
+    disk:
+      name: state
+      mountPath: /opt/render/project/src/state
+      sizeGB: 1
+    envVars:
+      - key: BASE_URL
+        value: https://kerebyudlejning.dk
+      - key: RENTALS_API_BASE_URL
+        value: https://api.jorato.com
+      - key: STATE_PATH
+        value: /opt/render/project/src/state/seen.json
+      - key: EMAIL_TO
+        value: emma.strandholt7000@gmail.com
+      - key: MAX_RENT
+        value: "9500"
+      - key: MIN_ROOMS
+        value: "0"
+      - key: POLL_INTERVAL_MS
+        value: "15000"
+      - key: MONITOR_TIMEZONE
+        value: Europe/Copenhagen
+      - key: MONITOR_START_HOUR
+        value: "8"
+      - key: MONITOR_END_HOUR
+        value: "16"
+      - key: RENTALS_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
