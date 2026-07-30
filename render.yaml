@@ -23,7 +23,7 @@ services:
       - key: MIN_ROOMS
         value: "0"
       - key: POLL_INTERVAL_MS
-        value: "15000"
+        value: "10000"
       - key: MONITOR_TIMEZONE
         value: Europe/Copenhagen
       - key: MONITOR_START_HOUR
