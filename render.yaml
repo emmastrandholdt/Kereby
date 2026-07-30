@@ -3,8 +3,8 @@ services:
     name: kereby-monitor
     runtime: node
     plan: starter
-    buildCommand: npm install
-    startCommand: npm run monitor
+    buildCommand: npm ci
+    startCommand: npm start
     disk:
       name: state
       mountPath: /opt/render/project/src/state

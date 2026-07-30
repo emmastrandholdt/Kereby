@@ -1,41 +1,38 @@
 # Kereby Render Monitor
 
-Dette repository overvåger `https://kerebyudlejning.dk` via Kerebys offentlige API og sender en mail med direkte links, når der kommer nye lejligheder, som matcher kriterierne.
+Dette repository kører som en Render Background Worker og overvåger `https://kerebyudlejning.dk` hvert 15. sekund.
 
-Aktuel funktion:
-- kører som en Render background worker
-- poller hvert 15. sekund
-- kører kun mellem `08:00` og `16:00` dansk tid
-- sender kun notifikationer til `emma.strandholt7000@gmail.com`
-- sender kun for lejligheder med husleje på maks `9500` kr
-- har intet krav til antal værelser
-- gemmer sete lejligheder i `state/seen.json` for at undgå dubletter
+Løsningen er langkørende og bruger en Render worker, ikke en cron job.
 
-## Arkitektur
+## Hvad der sker
 
-Løsningen består af én langkørende worker:
-- `scripts/monitor.mjs` henter Kerebys lejemål fra API'et, filtrerer dem og sender mail.
-- `render.yaml` deployer servicen som en Render `worker`.
-- `state/seen.json` ligger på en Render persistent disk, så listen over sete lejligheder overlever restarts og deploys.
+- `scripts/monitor.mjs` kører kontinuerligt i et `while (true)` loop.
+- Der foretages kun et nyt tjek, når det forrige er færdigt.
+- Der waits `POLL_INTERVAL_MS` efter hvert afsluttet tjek.
+- Worker-processen logger fejl, men fortsætter efter fejl.
+- Der tjekkes kun mellem `08:00` og `16:00` i tiden `Europe/Copenhagen`.
+- `state/seen.json` gemmes før eventuel email-send for at undgå gentagne mails.
 
-Dubletbeskyttelse:
-- nye lejligheder bliver skrevet til state-filen med det samme, før mail-send
-- state ligger på persistent disk i Render
-- der er kun én worker-proces i denne opsætning
+## Render konfiguration
 
-## Render setup
+Render-opsætningen findes i `render.yaml`.
 
-Render cron er ikke egnet til 15-sekunders polling. Derfor bruger repoet en `worker` i stedet for en `cron` service.
+Build Command: `npm ci`
+Start Command: `npm start`
 
-`render.yaml` forventer disse secrets i Render:
-- `RENTALS_API_KEY`
-- `EMAIL_FROM`
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_USER`
-- `SMTP_PASS`
+### Render service
 
-Render-konfigurationen sætter selv disse faste værdier:
+- type: `worker`
+- name: `kereby-monitor`
+- runtime: `node`
+- plan: `starter`
+- persistent disk: `state` monteret på `/opt/render/project/src/state`
+
+### Fast environment variables
+
+- `BASE_URL=https://kerebyudlejning.dk`
+- `RENTALS_API_BASE_URL=https://api.jorato.com`
+- `STATE_PATH=/opt/render/project/src/state/seen.json`
 - `EMAIL_TO=emma.strandholt7000@gmail.com`
 - `MAX_RENT=9500`
 - `MIN_ROOMS=0`
@@ -43,33 +40,61 @@ Render-konfigurationen sætter selv disse faste værdier:
 - `MONITOR_TIMEZONE=Europe/Copenhagen`
 - `MONITOR_START_HOUR=8`
 - `MONITOR_END_HOUR=16`
-- `STATE_PATH=/opt/render/project/src/state/seen.json`
 
-## Lokal kørsel
+### Secrets (Render env vars, sync: false)
+
+- `RENTALS_API_KEY`
+- `EMAIL_FROM`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+
+## State
+
+`STATE_PATH` peger på den Render persistence disk: `/opt/render/project/src/state/seen.json`.
+Den sikrer, at listen over tidligere sete lejligheder bevares mellem genstarter.
+
+## Lokal test
 
 1. Installer dependencies:
+
 ```bash
 npm install
 ```
 
-2. Opret en lokal `.env`:
+2. Kopier eksempel:
+
 ```bash
 cp .env.example .env
 ```
 
-3. Udfyld SMTP og `RENTALS_API_KEY` i `.env`.
+3. Udfyld de hemmelige værdier i `.env`.
 
-4. Start worker:
+4. Start worker lokalt:
+
 ```bash
-npm run monitor
+npm start
 ```
 
-## Noter
+> Det er OK, hvis programmet stopper med en fejl om manglende miljøvariabler under lokal test, så længe der ikke er syntax errors eller manglende imports.
 
-- Render persistent disks virker kun på understøttede betalte services. Render dokumenterer, at workers kan bruge persistent disk, og at mount path for Node-kode under repoet skal ligge under `/opt/render/project/src`.
-- Blueprint secrets i `render.yaml` er sat med `sync: false`, som Render anbefaler til credentials.
+## Environment variables i `.env.example`
 
-Kilder:
-- https://render.com/docs/blueprint-spec
-- https://render.com/docs/disks
-- https://render.com/docs/background-workers
+- `BASE_URL`
+- `RENTALS_API_BASE_URL`
+- `RENTALS_API_KEY`
+- `STATE_PATH`
+- `EMAIL_TO`
+- `EMAIL_FROM`
+- `EMAIL_SUBJECT_PREFIX`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `MAX_RENT`
+- `MIN_ROOMS`
+- `POLL_INTERVAL_MS`
+- `MONITOR_TIMEZONE`
+- `MONITOR_START_HOUR`
+- `MONITOR_END_HOUR`

@@ -4,6 +4,7 @@
   "description": "Render worker der overvager Kereby og sender mail ved nye lejligheder.",
   "type": "module",
   "scripts": {
+    "start": "node scripts/monitor.mjs",
     "monitor": "node scripts/monitor.mjs"
   },
   "dependencies": {
